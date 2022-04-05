@@ -36,12 +36,15 @@ class _SelectionPageState extends State<SelectionPage> {
 
   @override
   Widget build(BuildContext context) {
+    bool urlsWasEmpty = urls.isEmpty;
     if(latestImageTime == null) {
       initLatestImageTime();
     }
     endDate = latestImageTime ?? guessLatestRadarImageTime();
     startDate = endDate.subtract(const Duration(hours: MeteoRomania.maximumHourDifference));
-    urls = MeteoRomania.getUrlsInInterval(startDate, endDate);
+    urls = urls.isEmpty ? MeteoRomania.getUrlsInInterval(startDate, endDate) : urls;
+    start = urlsWasEmpty ? urls.length - 40 : start;
+    end = urlsWasEmpty ? urls.length - 1 : end;
     return Scaffold(
       body: Container(
         color: Colors.blue[50],
