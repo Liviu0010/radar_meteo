@@ -24,7 +24,27 @@ class _RadarPageState extends State<RadarPage> {
   void getImageList() {
     var argMap = ModalRoute.of(context)?.settings.arguments as Map;
     List<String> urls = argMap["urls"];
-    imageList = imageList.isEmpty ? MeteoRomania.getRadarImagesFromList(urls) : imageList;
+
+    if(imageList.isEmpty) {
+      imageList = MeteoRomania.getRadarImagesFromList(urls, errorCallback: (radarImage) {
+        //sometimes the radar images seem to be posted 1 minute earlier or later
+        //attempting to fix that
+        if(!radarImage.minuteSubtracted) {
+          radarImage.url = MeteoRomania.subtractMinutesFromUrlTime(radarImage.url);
+          radarImage.initializeImageProvider();
+          radarImage.minuteSubtracted = true;
+          setState(() {});
+        }
+        else if(!radarImage.minuteAdded) {
+          radarImage.url = MeteoRomania.subtractMinutesFromUrlTime(radarImage.url, minutesToSubtract: -2);
+          radarImage.initializeImageProvider();
+          radarImage.minuteAdded = true;
+          setState(() {});
+        }
+
+      });
+    }
+
   }
 
   @override

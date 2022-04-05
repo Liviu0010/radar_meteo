@@ -23,10 +23,13 @@ class MeteoRomania {
     return images;
   }
 
-  static List<RadarImage> getRadarImagesFromList(List<String> urls) {
+  static List<RadarImage> getRadarImagesFromList(List<String> urls, {Function(RadarImage)? errorCallback}) {
     var images = List<RadarImage>.empty(growable: true);
     urls.forEach((element) {
-      images.add(RadarImage(url: element, time: Utils.representDateTime(MeteoRomania.urlToDateTime(element))));
+      images.add(RadarImage(url: element, time: Utils.representDateTime(MeteoRomania.urlToDateTime(element)),
+                              onError: (radarImage) {
+                                errorCallback?.call(radarImage);
+                              }));
     });
 
     return images;
@@ -62,6 +65,11 @@ class MeteoRomania {
     image += Utils.representNumber(dt.hour) + Utils.representNumber(dt.minute) + ".0_mercator.png";
 
     return base+image;
+  }
+
+  static String subtractMinutesFromUrlTime(String imageUrl, {int minutesToSubtract = 1}) {
+    DateTime dt = urlToDateTime(imageUrl);
+    return _dateTimeToUrl(dt.subtract(Duration(minutes: minutesToSubtract)));
   }
 
   ///Turns the URL string to a radar image file into a DateTime object of LocalTime.

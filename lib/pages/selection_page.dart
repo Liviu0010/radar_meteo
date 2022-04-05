@@ -19,6 +19,7 @@ class _SelectionPageState extends State<SelectionPage> {
 
   void initLatestImageTime() async {
     latestImageTime = await MeteoRomania.latestImageTime();
+    setState(() {});
   }
 
   DateTime guessLatestRadarImageTime() {
@@ -29,13 +30,15 @@ class _SelectionPageState extends State<SelectionPage> {
   @override
   void initState() {
     super.initState();
-    startDate = guessLatestRadarImageTime();
     endDate = guessLatestRadarImageTime();
-    initLatestImageTime();
+    startDate = endDate.subtract(const Duration(hours: MeteoRomania.maximumHourDifference));
   }
 
   @override
   Widget build(BuildContext context) {
+    if(latestImageTime == null) {
+      initLatestImageTime();
+    }
     endDate = latestImageTime ?? guessLatestRadarImageTime();
     startDate = endDate.subtract(const Duration(hours: MeteoRomania.maximumHourDifference));
     urls = MeteoRomania.getUrlsInInterval(startDate, endDate);
