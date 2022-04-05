@@ -7,6 +7,5 @@ class RadarImage {
 
   RadarImage({required this.url, required this.time}) {
     image = CachedNetworkImageProvider(url);
-    print("Constructed image with time $time");
   }
 }

@@ -40,6 +40,10 @@ class _RadarPageState extends State<RadarPage> {
       floatingActionButtonLocation: FloatingActionButtonLocation.startTop,
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          if(playTimer != null && playTimer!.isActive) {
+            playTimer!.cancel();
+          }
+
           Navigator.pop(context);
         },
         mini: true,
@@ -61,11 +65,11 @@ class _RadarPageState extends State<RadarPage> {
             ),
             IconButton(
                 onPressed: () {
-                  if(playTimer == null) {
+                  if(!playing) {
                     setState(() {
                       playing = true;
                     });
-                    playTimer ??= Timer.periodic(const Duration(seconds: 1), (timer) {
+                    playTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
                       setState(() {
                         imageIndex = imageIndex == imageList.length - 1 ? 0 : imageIndex + 1;
                         scrollController.scrollTo(
@@ -78,7 +82,6 @@ class _RadarPageState extends State<RadarPage> {
                     setState(() {
                       playing = false;
                       playTimer?.cancel();
-                      playTimer = null;
                     });
                   }
                 },

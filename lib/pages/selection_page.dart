@@ -10,39 +10,34 @@ class SelectionPage extends StatefulWidget {
 }
 
 class _SelectionPageState extends State<SelectionPage> {
-  DateTime startDate = DateTime.now();
-  DateTime endDate = DateTime.now();
+  DateTime? latestImageTime;
+  late DateTime startDate;
+  late DateTime endDate;
   int start = 0;
   int end = 0;
   List<String> urls = List<String>.empty(growable: true);
 
-  void initInterval() async {
-    endDate = await MeteoRomania.latestImageTime();
-    startDate = endDate.subtract(const Duration(hours: MeteoRomania.maximumHourDifference));
+  void initLatestImageTime() async {
+    latestImageTime = await MeteoRomania.latestImageTime();
   }
 
-  String niceLabel(DateTime dt) {
-    String result = "";
-    if(dt.day == DateTime.now().subtract(const Duration(days: 1)).day) {
-      result = "Ieri ";
-    }
-    else {
-      result = "Azi ";
-    }
-
-    result += "${Utils.representNumber(dt.hour)}:${Utils.representNumber(dt.minute)}";
-
-    return result;
+  DateTime guessLatestRadarImageTime() {
+    DateTime now = DateTime.now().subtract(const Duration(minutes: 10));
+    return DateTime(now.year, now.month, now.day, now.hour, (now.minute/10).floor()*10+1);
   }
 
   @override
   void initState() {
     super.initState();
-    initInterval();
+    startDate = guessLatestRadarImageTime();
+    endDate = guessLatestRadarImageTime();
+    initLatestImageTime();
   }
 
   @override
   Widget build(BuildContext context) {
+    endDate = latestImageTime ?? guessLatestRadarImageTime();
+    startDate = endDate.subtract(const Duration(hours: MeteoRomania.maximumHourDifference));
     urls = MeteoRomania.getUrlsInInterval(startDate, endDate);
     return Scaffold(
       body: Container(
@@ -76,8 +71,8 @@ class _SelectionPageState extends State<SelectionPage> {
                   });
                 },
                 labels: RangeLabels(
-                  niceLabel(MeteoRomania.urlToDateTime(urls[start])),
-                  niceLabel(MeteoRomania.urlToDateTime(urls[end]))
+                  Utils.dayFromToday(MeteoRomania.urlToDateTime(urls[start]), includeTime: true),
+                  Utils.dayFromToday(MeteoRomania.urlToDateTime(urls[end]), includeTime: true)
                 ),
             ),
             ElevatedButton(
