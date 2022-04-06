@@ -6,6 +6,7 @@ import 'package:radar_meteo/meteoromania/radar_image.dart';
 import "package:scrollable_positioned_list/scrollable_positioned_list.dart";
 import "dart:async";
 import 'package:cached_network_image/cached_network_image.dart';
+import "package:radar_meteo/cached_tile_provider.dart";
 
 class RadarPage extends StatefulWidget {
   const RadarPage({Key? key}) : super(key: key);
@@ -139,6 +140,7 @@ class _RadarPageState extends State<RadarPage> {
                     urlTemplate:
                     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
                     subdomains: ['a', 'b', 'c'],
+                    tileProvider: CachedTileProvider(),
                     attributionBuilder: (_) {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
