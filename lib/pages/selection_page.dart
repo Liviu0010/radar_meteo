@@ -16,6 +16,7 @@ class _SelectionPageState extends State<SelectionPage> {
   int start = 0;
   int end = 0;
   List<String> urls = List<String>.empty(growable: true);
+  Future<List<String>>? listFuture;
 
   void initLatestImageTime() async {
     latestImageTime = await MeteoRomania.latestImageTime();
@@ -24,73 +25,90 @@ class _SelectionPageState extends State<SelectionPage> {
 
   DateTime guessLatestRadarImageTime() {
     DateTime now = DateTime.now().subtract(const Duration(minutes: 10));
-    return DateTime(now.year, now.month, now.day, now.hour, (now.minute/10).floor()*10+1);
+    return DateTime(now.year, now.month, now.day, now.hour,
+        (now.minute / 10).floor() * 10 + 1);
   }
 
   @override
   void initState() {
     super.initState();
     endDate = guessLatestRadarImageTime();
-    startDate = endDate.subtract(const Duration(hours: MeteoRomania.maximumHourDifference));
+    startDate = endDate
+        .subtract(const Duration(hours: MeteoRomania.maximumHourDifference));
   }
 
   @override
   Widget build(BuildContext context) {
     bool urlsWasEmpty = urls.isEmpty;
-    if(latestImageTime == null) {
+    if (latestImageTime == null) {
       initLatestImageTime();
     }
-    endDate = latestImageTime ?? guessLatestRadarImageTime();
-    startDate = endDate.subtract(const Duration(hours: MeteoRomania.maximumHourDifference));
-    urls = urls.isEmpty ? MeteoRomania.getUrlsInInterval(startDate, endDate) : urls;
-    start = urlsWasEmpty ? urls.length - 40 : start;
-    end = urlsWasEmpty ? urls.length - 1 : end;
+    listFuture ??= Future(() async {
+      if (urls.isEmpty) {
+        urls = await MeteoRomania.getUrlsInInterval(startDate, endDate);
+      }
+      return urls;
+    });
+
     return Scaffold(
-      body: Container(
-        color: Colors.blue[50],
-        child: Column(
+        body: Container(
+      color: Colors.blue[50],
+      child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
-          children:  [
+          children: [
             const Center(
               child: SafeArea(
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 50, horizontal: 0),
                   child: Text(
                     "Intervalul de timp pentru imaginile radar",
-                    style: TextStyle(
-                     fontSize: 20
-                    ),
+                    style: TextStyle(fontSize: 20),
                   ),
                 ),
               ),
             ),
-            RangeSlider(
-                min: 0,
-                max: urls.isEmpty ? 0 : urls.length-1,
-                divisions: urls.length,
-                values: RangeValues(start.toDouble(), end.toDouble()),
-                onChanged: (newValues) {
-                  setState(() {
-                    start = newValues.start.round();
-                    end = newValues.end.round();
-                  });
-                },
-                labels: RangeLabels(
-                  Utils.dayFromToday(MeteoRomania.urlToDateTime(urls[start]), includeTime: true),
-                  Utils.dayFromToday(MeteoRomania.urlToDateTime(urls[end]), includeTime: true)
-                ),
-            ),
+            FutureBuilder(
+                future: listFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.done) {
+                    urls = snapshot.data as List<String>;
+                    start = urlsWasEmpty ? urls.length - 40 : start;
+                    end = urlsWasEmpty ? urls.length - 1 : end;
+                    return RangeSlider(
+                        min: 0,
+                        max: urls.isEmpty ? 0 : urls.length - 1,
+                        divisions: urls.length,
+                        values: RangeValues(start.toDouble(), end.toDouble()),
+                        onChanged: (newValues) {
+                          setState(() {
+                            start = newValues.start.round();
+                            end = newValues.end.round();
+                          });
+                        },
+                        labels: RangeLabels(
+                            Utils.dayFromToday(
+                                MeteoRomania.urlToDateTime(urls[start]),
+                                includeTime: true),
+                            Utils.dayFromToday(
+                                MeteoRomania.urlToDateTime(urls[end]),
+                                includeTime: true)));
+                  } else {
+                    return Text("Obținere date...");
+                  }
+                }),
             ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, "/radar_page", arguments: {
-                    "urls": urls.sublist(start, end+1)
-                  });
+                onPressed: () async {
+                 var result = await Navigator.pushNamed(context, "/radar_page",
+                                arguments: {"urls": urls.sublist(start, end + 1)}) as Map<String, dynamic>;
+                 if(result["urlErrors"] as bool) {
+                   listFuture = null;
+                   urls.clear();
+                   setState(() {});
+                 }
                 },
                 child: const Text("Afișează"))
-          ]
-        ),
-      )
-    );
+          ]),
+    ));
   }
 }

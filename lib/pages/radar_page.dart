@@ -7,6 +7,7 @@ import "package:scrollable_positioned_list/scrollable_positioned_list.dart";
 import "dart:async";
 import 'package:cached_network_image/cached_network_image.dart';
 import "package:radar_meteo/cached_tile_provider.dart";
+import "package:flutter_cache_manager/flutter_cache_manager.dart";
 
 class RadarPage extends StatefulWidget {
   const RadarPage({Key? key}) : super(key: key);
@@ -21,28 +22,29 @@ class _RadarPageState extends State<RadarPage> {
   ItemScrollController scrollController = ItemScrollController();
   Timer? playTimer;
   bool playing = false;
+  bool urlErrors = false;
 
   void getImageList() {
     var argMap = ModalRoute.of(context)?.settings.arguments as Map;
     List<String> urls = argMap["urls"];
 
     if(imageList.isEmpty) {
-      imageList = MeteoRomania.getRadarImagesFromList(urls, errorCallback: (radarImage) {
+      imageList = MeteoRomania.getRadarImagesFromList(urls, errorCallback: (radarImage) async {
         //sometimes the radar images seem to be posted 1 minute earlier or later
         //attempting to fix that
+        DefaultCacheManager().removeFile(radarImage.url);
+        urlErrors = true;
         if(!radarImage.minuteSubtracted) {
           radarImage.url = MeteoRomania.subtractMinutesFromUrlTime(radarImage.url);
           radarImage.initializeImageProvider();
           radarImage.minuteSubtracted = true;
-          setState(() {});
         }
         else if(!radarImage.minuteAdded) {
           radarImage.url = MeteoRomania.subtractMinutesFromUrlTime(radarImage.url, minutesToSubtract: -2);
           radarImage.initializeImageProvider();
           radarImage.minuteAdded = true;
-          setState(() {});
         }
-
+        setState(() {});
       });
     }
 
@@ -65,7 +67,9 @@ class _RadarPageState extends State<RadarPage> {
             playTimer!.cancel();
           }
 
-          Navigator.pop(context);
+          Navigator.pop(context, {
+            "urlErrors": urlErrors
+          });
         },
         mini: true,
         child: const Icon(Icons.arrow_back),
@@ -120,81 +124,89 @@ class _RadarPageState extends State<RadarPage> {
           ],
         ),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Flexible(
-              flex: 9,
-              child: FlutterMap(
-                options: MapOptions(
-                    center: LatLng(45, 25),
-                    zoom: 6.0,
-                    minZoom: 6,
-                    nePanBoundary: LatLng(50, 30),
-                    swPanBoundary: LatLng(40, 20),
-                    slideOnBoundaries: true,
-                    interactiveFlags: InteractiveFlag.drag | InteractiveFlag.flingAnimation | InteractiveFlag.pinchMove | InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom
-                ),
-                layers: [
-                  TileLayerOptions(
-                    urlTemplate:
-                    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                    subdomains: ['a', 'b', 'c'],
-                    tileProvider: CachedTileProvider(),
-                    attributionBuilder: (_) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: const <Widget>[
-                          Text("© OpenStreetMap contributors"),
-                          Image(image: AssetImage("assets/logo-anm.png"),width: 170,)
-                        ],
-                      );
-                    },
+      body: WillPopScope(
+        onWillPop: () async {
+          Navigator.pop(context, {
+            "urlErrors": urlErrors
+          });
+          return false;
+        },
+        child: SafeArea(
+          child: Column(
+            children: [
+              Flexible(
+                flex: 9,
+                child: FlutterMap(
+                  options: MapOptions(
+                      center: LatLng(45, 25),
+                      zoom: 6.0,
+                      minZoom: 6,
+                      nePanBoundary: LatLng(50, 30),
+                      swPanBoundary: LatLng(40, 20),
+                      slideOnBoundaries: true,
+                      interactiveFlags: InteractiveFlag.drag | InteractiveFlag.flingAnimation | InteractiveFlag.pinchMove | InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom
                   ),
-                  OverlayImageLayerOptions(overlayImages: [
-                    OverlayImage(
-                        imageProvider: imageList.isNotEmpty ? imageList[imageIndex].image : const CachedNetworkImageProvider(""),
-                        bounds: LatLngBounds(
-                            LatLng(42.00767893522453, 17.972678603012373),
-                            LatLng(49.162878895590495, 31.476678571902717)),
-                        opacity: 0.55,
-                        gaplessPlayback: true
-                    )
-                  ])
-                ],
-              ),
-            ),
-            Flexible(
-                flex: 3,
-                child: Scrollbar(
-                  child: ScrollablePositionedList.builder(
-                    minCacheExtent: 40,
-                    itemCount: imageList.length,
-                    itemScrollController: scrollController,
-                    itemBuilder: (buildContext, index) {
-                      return ListTile(
-                        title: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              imageList.isEmpty ? "" : imageList[index].time,
-                            ),
+                  layers: [
+                    TileLayerOptions(
+                      urlTemplate:
+                      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                      subdomains: ['a', 'b', 'c'],
+                      tileProvider: CachedTileProvider(),
+                      attributionBuilder: (_) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: const <Widget>[
+                            Text("© OpenStreetMap contributors"),
+                            Image(image: AssetImage("assets/logo-anm.png"),width: 170,)
                           ],
-                        ),
-                        tileColor: index == imageIndex ? Colors.blue : Colors.transparent,
-                        onTap: () {
-                          setState(() {
-                            imageIndex = index;
-                          });
-                        },
-                      );
-                    },
+                        );
+                      },
+                    ),
+                    OverlayImageLayerOptions(overlayImages: [
+                      OverlayImage(
+                          imageProvider: imageList.isNotEmpty ? imageList[imageIndex].image : const CachedNetworkImageProvider(""),
+                          bounds: LatLngBounds(
+                              LatLng(42.00767893522453, 17.972678603012373),
+                              LatLng(49.162878895590495, 31.476678571902717)),
+                          opacity: 0.55,
+                          gaplessPlayback: true
+                      )
+                    ])
+                  ],
+                ),
+              ),
+              Flexible(
+                  flex: 3,
+                  child: Scrollbar(
+                    child: ScrollablePositionedList.builder(
+                      minCacheExtent: 40,
+                      itemCount: imageList.length,
+                      itemScrollController: scrollController,
+                      itemBuilder: (buildContext, index) {
+                        return ListTile(
+                          title: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                imageList.isEmpty ? "" : imageList[index].time,
+                              ),
+                            ],
+                          ),
+                          tileColor: index == imageIndex ? Colors.blue : Colors.transparent,
+                          onTap: () {
+                            setState(() {
+                              imageIndex = index;
+                            });
+                          },
+                        );
+                      },
 
-                  ),
-                )),
-            //may add more children
-          ],
+                    ),
+                  )),
+              //may add more children
+            ],
+          ),
         ),
       ),
     );

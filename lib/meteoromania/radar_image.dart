@@ -14,7 +14,7 @@ class RadarImage {
     initializeImageProvider();
   }
 
-  initializeImageProvider() {
+  void initializeImageProvider() {
     //sometimes the radar images seem to be posted 1 minute earlier or later
     //attempting to fix that
     image = CachedNetworkImageProvider(url, errorListener: () {

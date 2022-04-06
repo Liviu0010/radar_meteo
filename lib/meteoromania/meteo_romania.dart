@@ -2,6 +2,7 @@ import "package:http/http.dart";
 import "dart:convert";
 import "package:radar_meteo/meteoromania/radar_image.dart";
 import "package:radar_meteo/utils.dart";
+import "package:flutter_cache_manager/flutter_cache_manager.dart";
 
 class MeteoRomania {
   static const String _infoApi = "https://www.meteoromania.ro/wp-content/plugins/meteo/json/imagini-radar.php";
@@ -87,15 +88,33 @@ class MeteoRomania {
     return DateTime.utc(year, month, day, hour, minute).toLocal();
   }
 
-  static List<String> getUrlsInInterval(DateTime start, DateTime end) {
-    var list = List<String>.empty(growable: true);
+  static Future<List<String>> getUrlsInInterval(DateTime start, DateTime end) async {
+    var list = List<Future<String>>.empty(growable: true);
 
     for(DateTime i = start; i.isBefore(end); i = i.add(const Duration(minutes: 10))) {
-      list.add(_dateTimeToUrl(i));
+      String url = _dateTimeToUrl(i);
+      list.add(fixUrlFromCache(url));
     }
 
-    list.add(_dateTimeToUrl(end));
+    list.add(fixUrlFromCache(_dateTimeToUrl(end)));
 
-    return list;
+    return Future.wait(list);
+  }
+
+  ///Checks if there is a corrected URL in the cache
+  ///in case the image was posted earlier/later than approximated
+  static Future<String> fixUrlFromCache(String url) async {
+    String earlyUrl = subtractMinutesFromUrlTime(url);
+    String lateUrl = subtractMinutesFromUrlTime(url, minutesToSubtract: -1);
+    var earlyFile = await DefaultCacheManager().getFileFromCache(earlyUrl);
+    var lateFile = await DefaultCacheManager().getFileFromCache(lateUrl);
+
+    if(earlyFile != null) {
+      url = earlyUrl;
+    }
+    else if(lateFile != null) {
+      url = lateUrl;
+    }
+    return url;
   }
 }
