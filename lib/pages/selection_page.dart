@@ -10,18 +10,12 @@ class SelectionPage extends StatefulWidget {
 }
 
 class _SelectionPageState extends State<SelectionPage> {
-  DateTime? latestImageTime;
   late DateTime startDate;
-  late DateTime endDate;
+  late DateTime? endDate;
   int start = 0;
   int end = 0;
   List<String> urls = List<String>.empty(growable: true);
   Future<List<String>>? listFuture;
-
-  void initLatestImageTime() async {
-    latestImageTime = await MeteoRomania.latestImageTime();
-    setState(() {});
-  }
 
   DateTime guessLatestRadarImageTime() {
     DateTime now = DateTime.now().subtract(const Duration(minutes: 10));
@@ -30,22 +24,13 @@ class _SelectionPageState extends State<SelectionPage> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    endDate = guessLatestRadarImageTime();
-    startDate = endDate
-        .subtract(const Duration(hours: MeteoRomania.maximumHourDifference));
-  }
-
-  @override
   Widget build(BuildContext context) {
     bool urlsWasEmpty = urls.isEmpty;
-    if (latestImageTime == null) {
-      initLatestImageTime();
-    }
     listFuture ??= Future(() async {
       if (urls.isEmpty) {
-        urls = await MeteoRomania.getUrlsInInterval(startDate, endDate);
+        endDate = await MeteoRomania.latestImageTime();
+        startDate = endDate!.subtract(const Duration(hours: MeteoRomania.maximumHourDifference));
+        urls = await MeteoRomania.getUrlsInInterval(startDate, endDate!);
       }
       return urls;
     });

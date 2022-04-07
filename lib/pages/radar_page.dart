@@ -8,6 +8,7 @@ import "dart:async";
 import 'package:cached_network_image/cached_network_image.dart';
 import "package:radar_meteo/cached_tile_provider.dart";
 import "package:flutter_cache_manager/flutter_cache_manager.dart";
+import "package:radar_meteo/utils.dart";
 
 class RadarPage extends StatefulWidget {
   const RadarPage({Key? key}) : super(key: key);
@@ -44,6 +45,7 @@ class _RadarPageState extends State<RadarPage> {
           radarImage.initializeImageProvider();
           radarImage.minuteAdded = true;
         }
+        radarImage.time = Utils.representDateTime(MeteoRomania.urlToDateTime(radarImage.url));
         setState(() {});
       });
     }
