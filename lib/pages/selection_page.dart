@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:radar_meteo/meteoromania/meteo_romania.dart';
 import "package:radar_meteo/utils.dart";
 
@@ -37,18 +38,27 @@ class _SelectionPageState extends State<SelectionPage> {
 
     return Scaffold(
         body: Container(
-      color: Colors.blue[50],
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage("assets/bgclouds.png"),
+          fit: BoxFit.fill
+        )
+      ),
       child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Center(
+            Center(
               child: SafeArea(
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 50, horizontal: 0),
                   child: Text(
-                    "Intervalul de timp pentru imaginile radar",
-                    style: TextStyle(fontSize: 20),
+                    "Intervalul de timp",
+                    style: TextStyle(
+                        fontSize: 20,
+                        letterSpacing: 0.5,
+                      color: Colors.blueGrey[400]
+                    ),
                   ),
                 ),
               ),
@@ -57,6 +67,17 @@ class _SelectionPageState extends State<SelectionPage> {
                 future: listFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.done) {
+                    if(snapshot.data == null) {
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Text("Nu s-au putut descărca date ", style: TextStyle(fontSize: 16),),
+                          Icon(Icons.error_outline)
+                        ],
+                      ) ;
+
+                    }
+
                     urls = snapshot.data as List<String>;
                     start = urlsWasEmpty ? urls.length - 40 : start;
                     end = urlsWasEmpty ? urls.length - 1 : end;
@@ -79,11 +100,14 @@ class _SelectionPageState extends State<SelectionPage> {
                                 MeteoRomania.urlToDateTime(urls[end]),
                                 includeTime: true)));
                   } else {
-                    return Text("Obținere date...");
+                    return const SpinKitThreeInOut(color: Colors.blue,);
                   }
                 }),
             ElevatedButton(
                 onPressed: () async {
+                  if(urls.isEmpty) {
+                    return;
+                  }
                  var result = await Navigator.pushNamed(context, "/radar_page",
                                 arguments: {"urls": urls.sublist(start, end + 1)}) as Map<String, dynamic>;
                  if(result["urlErrors"] as bool) {
@@ -92,7 +116,16 @@ class _SelectionPageState extends State<SelectionPage> {
                    setState(() {});
                  }
                 },
-                child: const Text("Afișează"))
+                child: const Text("Afișează")),
+            TextButton(
+                onPressed: () {
+                  setState(() {
+                    listFuture = null;
+                    urls.clear();
+                  });
+                },
+                child: Text("Reîmprospătează")
+            )
           ]),
     ));
   }
